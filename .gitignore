@@ -12,6 +12,8 @@ build/
 /Packages
 Package.resolved
 *.xcodeproj
+.swiftpm/xcode/package.xcworkspace/xcshareddata/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
 
 # IDE
 .vscode/

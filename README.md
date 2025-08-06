@@ -5,9 +5,39 @@
 // Created by Manoj on 06/08/2025.
 //
 
-# Shopping List Module
+# ShoppingListModule
 
 A production-ready, modular shopping list feature built for iOS apps using **SwiftUI**, **SwiftData**, and **Clean Architecture** principles. This module implements a complete offline-first shopping list solution with background synchronization, conflict resolution, and comprehensive testing.
+
+## 📦 Installation
+
+### Swift Package Manager
+
+Add ShoppingListModule to your project using Swift Package Manager:
+
+1. In Xcode, go to **File** → **Add Package Dependencies**
+2. Enter the repository URL: `https://github.com/your-username/ShoppingListModule.git`
+3. Select the version you want to use
+4. Click **Add Package**
+
+### Manual Installation
+
+1. Clone the repository
+2. Add the `Package.swift` file to your project
+3. Build and run
+
+## 🚀 Quick Start
+
+```swift
+import SwiftUI
+import ShoppingListModule
+
+struct ContentView: View {
+    var body: some View {
+        ShoppingListView()
+    }
+}
+```
 
 ## 🎯 **Project Overview**
 

@@ -1,16 +1,47 @@
 // swift-tools-version: 6.1
+// The swift-tools-version declares the minimum version of Swift required to build this package.
+
 import PackageDescription
 
 let package = Package(
-    name: "TestSPMIntegration",
-    platforms: [.iOS(.v17)],
+    name: "ShoppingListModule",
+    platforms: [
+        .iOS(.v17), // Required for SwiftData
+        .macOS(.v14) // For development and testing
+    ],
+    products: [
+        .library(
+            name: "ShoppingListModule",
+            targets: ["ShoppingListModule"]
+        ),
+    ],
     dependencies: [
-        .package(path: "../ShoppingListModule")
+        // No external dependencies to keep it lightweight
     ],
     targets: [
-        .executableTarget(
-            name: "TestSPMIntegration",
-            dependencies: ["ShoppingListModule"]
-        )
+        .target(
+            name: "ShoppingListModule",
+            dependencies: [],
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ExistentialAny"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        .testTarget(
+            name: "ShoppingListModuleTests",
+            dependencies: ["ShoppingListModule"],
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ExistentialAny"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
     ]
 )

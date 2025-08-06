@@ -51,7 +51,7 @@ struct MainTabView: View {
                     Image(systemName: "house")
                     Text("Home")
                 }
-            
+
             NavigationView {
                 ShoppingListView()
                     .navigationTitle("Shopping List")
@@ -73,11 +73,11 @@ import ShoppingListModule
 
 struct ShoppingListWithActions: View {
     @State private var viewModel: ShoppingListViewModel?
-    
+
     var body: some View {
         VStack {
             ShoppingListView()
-            
+
             Button("Add Sample Items") {
                 Task {
                     await viewModel?.addItem(name: "Milk", quantity: 1)

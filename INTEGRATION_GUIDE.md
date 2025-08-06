@@ -9,12 +9,14 @@ This guide provides comprehensive instructions for integrating the ShoppingListM
 ### 1. Add Package Dependency
 
 **In Xcode:**
+
 1. Go to **File** → **Add Package Dependencies**
 2. Enter: `https://github.com/manozghale/ShoppingListModule.git`
 3. Select version: `1.0.0`
 4. Add to your target
 
 **In Package.swift:**
+
 ```swift
 dependencies: [
     .package(url: "https://github.com/manozghale/ShoppingListModule.git", from: "1.0.0")
@@ -68,12 +70,12 @@ import ShoppingListModule
 
 struct HomeView: View {
     @State private var showShoppingList = false
-    
+
     var body: some View {
         VStack {
             // Your existing home content
             Text("Welcome to Super App")
-            
+
             Button("Open Shopping List") {
                 showShoppingList = true
             }
@@ -99,10 +101,10 @@ import SwiftUI
 import ShoppingListModule
 
 class ShoppingListViewController: UIViewController {
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         Task {
             do {
                 let shoppingListVC = try await ShoppingListModule.createViewController()
@@ -138,7 +140,7 @@ struct CustomShoppingListView: View {
                             isTestMode: false,
                             syncInterval: 300 // 5 minutes
                         )
-                        
+
                         try await ShoppingListModuleFactory.setupModule(configuration: configuration)
                     } catch {
                         print("Configuration error: \(error)")
@@ -175,7 +177,7 @@ import ShoppingListModule
 
 struct ShoppingListWithActions: View {
     @State private var viewModel: ShoppingListViewModel?
-    
+
     var body: some View {
         VStack {
             if let viewModel = viewModel {
@@ -184,7 +186,7 @@ struct ShoppingListWithActions: View {
             } else {
                 ProgressView("Loading...")
             }
-            
+
             // Custom actions
             HStack {
                 Button("Add Sample Items") {
@@ -193,7 +195,7 @@ struct ShoppingListWithActions: View {
                         await viewModel?.addItem(name: "Bread", quantity: 2)
                     }
                 }
-                
+
                 Button("Clear All") {
                     Task {
                         // Clear all items
@@ -225,29 +227,29 @@ import ShoppingListModule
 
 struct ShoppingListWithCustomData: View {
     @State private var viewModel: ShoppingListViewModel?
-    
+
     var body: some View {
         ShoppingListView()
             .onAppear {
                 setupCustomData()
             }
     }
-    
+
     private func setupCustomData() {
         Task {
             do {
                 let viewModel = try await ShoppingListModule.createViewModel()
-                
+
                 // Add custom items
                 await viewModel.addItem(name: "Custom Item 1", quantity: 1, note: "From super app")
                 await viewModel.addItem(name: "Custom Item 2", quantity: 3, note: "Important")
-                
+
                 // Set custom filter
                 await viewModel.setFilter(.active)
-                
+
                 // Set custom sort
                 await viewModel.setSort(.nameAscending)
-                
+
             } catch {
                 print("Failed to setup custom data: \(error)")
             }
@@ -273,7 +275,7 @@ struct MainTabView: View {
                     Image(systemName: "house")
                     Text("Home")
                 }
-            
+
             // Shopping List tab
             NavigationView {
                 ShoppingListView()
@@ -283,7 +285,7 @@ struct MainTabView: View {
                 Image(systemName: "cart")
                 Text("Shopping")
             }
-            
+
             // Settings tab
             SettingsView()
                 .tabItem {
@@ -310,7 +312,7 @@ struct AppNavigationView: View {
                         .navigationTitle("Shopping List")
                         .navigationBarTitleDisplayMode(.large)
                 }
-                
+
                 NavigationLink("Other Features") {
                     Text("Other features")
                 }
@@ -332,7 +334,7 @@ import ShoppingListModule
 struct SafeShoppingListView: View {
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         Group {
             if showError {
@@ -340,14 +342,14 @@ struct SafeShoppingListView: View {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.largeTitle)
                         .foregroundColor(.red)
-                    
+
                     Text("Failed to load Shopping List")
                         .font(.headline)
-                    
+
                     Text(errorMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Button("Retry") {
                         loadShoppingList()
                     }
@@ -360,7 +362,7 @@ struct SafeShoppingListView: View {
             loadShoppingList()
         }
     }
-    
+
     private func loadShoppingList() {
         Task {
             do {
@@ -387,13 +389,13 @@ import ShoppingListModule
 
 struct ThemedShoppingListView: View {
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         ShoppingListView()
             .accentColor(.purple)
             .background(
                 LinearGradient(
-                    colors: colorScheme == .dark 
+                    colors: colorScheme == .dark
                         ? [Color.black, Color.purple.opacity(0.3)]
                         : [Color.white, Color.purple.opacity(0.1)],
                     startPoint: .topLeading,
@@ -412,18 +414,18 @@ import ShoppingListModule
 
 struct ShoppingListWithCustomActions: View {
     @State private var viewModel: ShoppingListViewModel?
-    
+
     var body: some View {
         VStack {
             ShoppingListView()
-            
+
             // Custom action buttons
             HStack {
                 Button("Export List") {
                     exportShoppingList()
                 }
                 .buttonStyle(.borderedProminent)
-                
+
                 Button("Share List") {
                     shareShoppingList()
                 }
@@ -437,27 +439,27 @@ struct ShoppingListWithCustomActions: View {
             }
         }
     }
-    
+
     private func exportShoppingList() {
         // Custom export logic
         guard let items = viewModel?.items else { return }
-        
+
         let exportText = items.map { item in
             "- \(item.name) (Qty: \(item.quantity))"
         }.joined(separator: "\n")
-        
+
         // Share or save the export
         print("Exporting: \(exportText)")
     }
-    
+
     private func shareShoppingList() {
         // Custom share logic
         guard let items = viewModel?.items else { return }
-        
+
         let shareText = "My Shopping List:\n" + items.map { item in
             "• \(item.name) x\(item.quantity)"
         }.joined(separator: "\n")
-        
+
         // Implement sharing
         print("Sharing: \(shareText)")
     }
@@ -474,17 +476,17 @@ import ShoppingListModule
 @testable import YourApp
 
 class ShoppingListIntegrationTests: XCTestCase {
-    
+
     func testShoppingListIntegration() async throws {
         // Test module creation
         let viewModel = try await ShoppingListModule.createViewModel()
         XCTAssertNotNil(viewModel)
-        
+
         // Test adding items
         await viewModel.addItem(name: "Test Item", quantity: 1)
         XCTAssertEqual(viewModel.items.count, 1)
         XCTAssertEqual(viewModel.items.first?.name, "Test Item")
-        
+
         // Test filtering
         await viewModel.setFilter(.active)
         XCTAssertEqual(viewModel.filteredItems.count, 1)
@@ -495,16 +497,17 @@ class ShoppingListIntegrationTests: XCTestCase {
 ## Best Practices
 
 ### 1. Configuration Management
+
 ```swift
 // Store configuration in your app's settings
 class AppSettings {
     static let shared = AppSettings()
-    
+
     var shoppingListAPIURL: URL? {
         get { UserDefaults.standard.url(forKey: "shoppingListAPIURL") }
         set { UserDefaults.standard.set(newValue, forKey: "shoppingListAPIURL") }
     }
-    
+
     var shoppingListSyncEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: "shoppingListSyncEnabled") }
         set { UserDefaults.standard.set(newValue, forKey: "shoppingListSyncEnabled") }
@@ -513,6 +516,7 @@ class AppSettings {
 ```
 
 ### 2. Error Handling
+
 ```swift
 // Centralized error handling
 enum ShoppingListError: Error {
@@ -524,18 +528,19 @@ enum ShoppingListError: Error {
 func handleShoppingListError(_ error: Error) {
     // Log error
     print("Shopping List Error: \(error)")
-    
+
     // Show user-friendly message
     // Implement your app's error handling strategy
 }
 ```
 
 ### 3. Performance Optimization
+
 ```swift
 // Lazy loading for better performance
 struct LazyShoppingListView: View {
     @State private var isLoaded = false
-    
+
     var body: some View {
         Group {
             if isLoaded {
@@ -584,4 +589,4 @@ Task {
 
 ---
 
-This integration guide provides comprehensive examples for integrating the ShoppingListModule into your super-app. The module is designed to be flexible and can be integrated in various ways depending on your app's architecture and requirements. 
+This integration guide provides comprehensive examples for integrating the ShoppingListModule into your super-app. The module is designed to be flexible and can be integrated in various ways depending on your app's architecture and requirements.

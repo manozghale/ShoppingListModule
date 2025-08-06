@@ -6,7 +6,8 @@ import PackageDescription
 let package = Package(
     name: "ShoppingListModule",
     platforms: [
-        .iOS(.v17) // Required for SwiftData
+        .iOS(.v17), // Required for SwiftData
+        .macOS(.v14) // For development and testing
     ],
     products: [
         .library(

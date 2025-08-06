@@ -1,10 +1,3 @@
-//
-// README.md
-// ShoppingListModule
-//
-// Created by Manoj on 06/08/2025.
-//
-
 # ShoppingListModule
 
 A production-ready, modular shopping list feature built for iOS apps using **SwiftUI**, **SwiftData**, and **Clean Architecture** principles. This module implements a complete offline-first shopping list solution with background synchronization, conflict resolution, and comprehensive testing.
@@ -28,16 +21,80 @@ Add ShoppingListModule to your project using Swift Package Manager:
 
 ## 🚀 Quick Start
 
+### Basic Integration
+
 ```swift
 import SwiftUI
 import ShoppingListModule
 
 struct ContentView: View {
     var body: some View {
-        ShoppingListView()
+        NavigationView {
+            ShoppingListView()
+                .navigationTitle("Shopping List")
+        }
     }
 }
 ```
+
+### Tab Bar Integration
+
+```swift
+import SwiftUI
+import ShoppingListModule
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            HomeView()
+                .tabItem {
+                    Image(systemName: "house")
+                    Text("Home")
+                }
+            
+            NavigationView {
+                ShoppingListView()
+                    .navigationTitle("Shopping List")
+            }
+            .tabItem {
+                Image(systemName: "cart")
+                Text("Shopping")
+            }
+        }
+    }
+}
+```
+
+### Programmatic Access
+
+```swift
+import SwiftUI
+import ShoppingListModule
+
+struct ShoppingListWithActions: View {
+    @State private var viewModel: ShoppingListViewModel?
+    
+    var body: some View {
+        VStack {
+            ShoppingListView()
+            
+            Button("Add Sample Items") {
+                Task {
+                    await viewModel?.addItem(name: "Milk", quantity: 1)
+                    await viewModel?.addItem(name: "Bread", quantity: 2)
+                }
+            }
+        }
+        .onAppear {
+            Task {
+                viewModel = try await ShoppingListModule.createViewModel()
+            }
+        }
+    }
+}
+```
+
+📖 **For detailed integration examples, see [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)**
 
 ## 🎯 **Project Overview**
 

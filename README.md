@@ -158,7 +158,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/shopping-list-module.git", from: "1.0.0")
+    .package(url: "https://github.com/manozghale/shopping-list-module.git", from: "1.0.0")
 ]
 ```
 
@@ -377,7 +377,7 @@ XCTAssertEqual(viewModel.filteredItems.count, 1) // Only active items
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/shopping-list-module.git
+git clone https://github.com/manozghale/shopping-list-module.git
 cd shopping-list-module
 
 # Open in Xcode
@@ -469,10 +469,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ### **Getting Help**
 
-- 📧 **Email**: support@your-org.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/your-org/shopping-list-module/issues)
-- 📖 **Documentation**: [Wiki](https://github.com/your-org/shopping-list-module/wiki)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/shopping-list-module/discussions)
+- 📧 **Email**: support@manozghale.com
+- 🐛 **Issues**: [GitHub Issues](https://github.com/manozghale/shopping-list-module/issues)
+- 📖 **Documentation**: [Wiki](https://github.com/manozghale/shopping-list-module/wiki)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/manozghale/shopping-list-module/discussions)
 
 ### **Community Guidelines**
 

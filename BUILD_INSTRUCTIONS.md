@@ -12,7 +12,7 @@
 ### **1. Clone the Repository**
 
 ```bash
-git clone https://github.com/your-org/shopping-list-module.git
+git clone https://github.com/manozghale/shopping-list-module.git
 cd shopping-list-module
 ```
 
@@ -403,9 +403,9 @@ echo "All checks passed!"
 
 ### **Support**
 
-- [GitHub Issues](https://github.com/your-org/shopping-list-module/issues)
-- [Documentation Wiki](https://github.com/your-org/shopping-list-module/wiki)
-- [Community Discussions](https://github.com/your-org/shopping-list-module/discussions)
+- [GitHub Issues](https://github.com/manozghale/shopping-list-module/issues)
+- [Documentation Wiki](https://github.com/manozghale/shopping-list-module/wiki)
+- [Community Discussions](https://github.com/manozghale/shopping-list-module/discussions)
 
 ---
 

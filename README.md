@@ -25,7 +25,7 @@ Add ShoppingListModule to your project using Swift Package Manager:
 
 The module supports multiple integration patterns to fit different use cases:
 
-1. **Simple Integration**: Just use `ShoppingListView()` - the module handles everything automatically
+1. **Simple Integration**: Just use `SimpleShoppingListView()` - the module handles everything automatically
 2. **Custom ViewModel**: Create your own ViewModel instance for programmatic control
 3. **UIKit Integration**: Use `createViewController()` for UIKit apps
 4. **Tab Bar Integration**: Perfect for super apps with multiple tabs
@@ -72,7 +72,7 @@ import ShoppingListModule
 struct SimpleShoppingListView: View {
     var body: some View {
         NavigationView {
-            ShoppingListView()
+            SimpleShoppingListView()
                 .navigationTitle("Shopping List")
         }
     }
@@ -169,6 +169,22 @@ struct ShoppingListWithActions: View {
 
 The module has been updated to fix a critical dependency injection issue that was causing "missingDependency" errors. The `createViewModel()` method now properly sets up all required dependencies before creating the ViewModel.
 
+### **New Simple Integration (v1.0.2)**
+
+Added `SimpleShoppingListView` for the easiest possible integration. This view automatically handles ViewModel creation and dependency injection, eliminating the "Loading..." issue completely.
+
+**Before (causing issues):**
+
+```swift
+ShoppingListView() // ❌ Required ViewModel parameter
+```
+
+**After (working):**
+
+```swift
+SimpleShoppingListView() // ✅ No parameters needed
+```
+
 ### **Common Issues & Solutions**
 
 **Issue**: "Failed to create view model: missingDependency("ShoppingListRepository")"
@@ -177,7 +193,7 @@ The module has been updated to fix a critical dependency injection issue that wa
 
 **Issue**: Only seeing "Loading..." screen
 
-- **Solution**: This was caused by the dependency injection bug. The fix ensures proper initialization.
+- **Solution**: Use `SimpleShoppingListView()` instead of `ShoppingListView()`. The new view automatically handles ViewModel creation and dependency injection.
 
 **Issue**: Build errors with Swift 6
 
@@ -321,6 +337,11 @@ public struct ShoppingListModule {
     // Create just the ViewModel for custom implementations
     static func createViewModel(configuration: ShoppingListConfiguration) async throws -> ShoppingListViewModel
 }
+
+// Simple integration view that automatically handles ViewModel creation
+public struct SimpleShoppingListView: View {
+    public init() // No parameters needed - handles everything automatically
+}
 ```
 
 ### **Configuration Options**
@@ -367,7 +388,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             // Simple integration - automatically handles ViewModel creation
-            ShoppingListView()
+            SimpleShoppingListView()
                 .navigationTitle("Shopping List")
         }
     }

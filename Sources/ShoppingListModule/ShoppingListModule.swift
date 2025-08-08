@@ -25,6 +25,13 @@ public struct ShoppingListModule: Sendable {
         }
     }
     
+    /// Create a SwiftUI view that automatically handles ViewModel creation
+    /// This is the simplest integration method - just use SimpleShoppingListView()
+    @MainActor
+    public static func createSimpleView() -> some View {
+        AnyView(SimpleShoppingListView())
+    }
+    
     /// Create a SwiftUI view with custom configuration
     @MainActor
     public static func createView(configuration: ShoppingListConfiguration) async -> some View {
@@ -73,5 +80,33 @@ private struct ErrorView: View {
                 .foregroundColor(.secondary)
         }
         .padding()
+    }
+}
+
+/// Public view that automatically handles ViewModel creation
+/// This is the primary integration method for most use cases
+public struct SimpleShoppingListView: View {
+    @State private var viewModel: ShoppingListViewModel?
+    @State private var error: Error?
+    
+    public init() {}
+    
+    public var body: some View {
+        Group {
+            if let viewModel = viewModel {
+                ShoppingListView(viewModel: viewModel)
+            } else if let error = error {
+                ErrorView(error: error)
+            } else {
+                LoadingView()
+            }
+        }
+        .task {
+            do {
+                viewModel = try await ShoppingListModule.createViewModel()
+            } catch {
+                self.error = error
+            }
+        }
     }
 }

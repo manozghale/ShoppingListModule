@@ -27,7 +27,7 @@ public class ShoppingListModuleFactory {
         try await setupDependencies(configuration: configuration)
         
         // Create ViewModel with injected dependencies
-        let viewModel = try createViewModel(configuration: configuration)
+        let viewModel = try await createViewModel(configuration: configuration)
         
         return ShoppingListView(viewModel: viewModel)
     }
@@ -36,7 +36,10 @@ public class ShoppingListModuleFactory {
     @MainActor
     public static func createViewModel(
         configuration: ShoppingListConfiguration = .production
-    ) throws -> ShoppingListViewModel {
+    ) async throws -> ShoppingListViewModel {
+        
+        // Setup dependencies based on configuration
+        try await setupDependencies(configuration: configuration)
         
         guard let repository = ShoppingListDependencies.shared.resolve(ShoppingListRepository.self) else {
             throw ModuleError.missingDependency("ShoppingListRepository")

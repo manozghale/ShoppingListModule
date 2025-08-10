@@ -29,7 +29,7 @@ public enum SyncState {
     case idle
     case syncing
     case success(itemsProcessed: Int)
-    case error(Error)
+    case error(any Error)
 }
 
 // NetworkService protocol moved to separate file
@@ -42,8 +42,8 @@ public enum SyncState {
 
 /// Concrete implementation of sync service with robust error handling and retry logic
 public final class ShoppingSyncService: SyncService, @unchecked Sendable {
-    private let repository: ShoppingListRepository
-    private let networkService: NetworkService
+    private let repository: any ShoppingListRepository
+    private let networkService: any NetworkService
     private let syncStatusSubject = PassthroughSubject<SyncState, Never>()
     
     // Retry configuration
@@ -54,7 +54,7 @@ public final class ShoppingSyncService: SyncService, @unchecked Sendable {
         syncStatusSubject.eraseToAnyPublisher()
     }
     
-    public init(repository: ShoppingListRepository, networkService: NetworkService) {
+    public init(repository: any ShoppingListRepository, networkService: any NetworkService) {
         self.repository = repository
         self.networkService = networkService
     }
@@ -157,7 +157,7 @@ public final class ShoppingSyncService: SyncService, @unchecked Sendable {
         throw lastError ?? NetworkError.unknownError
     }
     
-    private func shouldRetry(_ error: Error) -> Bool {
+    private func shouldRetry(_ error: any Error) -> Bool {
         // Only retry on network-related errors, not client errors
         if let networkError = error as? NetworkError {
             switch networkError {

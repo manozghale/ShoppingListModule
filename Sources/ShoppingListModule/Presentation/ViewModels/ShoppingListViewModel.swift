@@ -37,13 +37,13 @@ public class ShoppingListViewModel: ObservableObject {
     
     // MARK: - Dependencies
     
-    private let repository: ShoppingListRepository
-    private let syncService: SyncService
+    private let repository: any ShoppingListRepository
+    private let syncService: any SyncService
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
     
-    public init(repository: ShoppingListRepository, syncService: SyncService) {
+    public init(repository: any ShoppingListRepository, syncService: any SyncService) {
         self.repository = repository
         self.syncService = syncService
         
@@ -229,7 +229,7 @@ public class ShoppingListViewModel: ObservableObject {
         }
     }
     
-    private func handleError(_ error: Error) {
+    private func handleError(_ error: any Error) {
         let message: String
         
         if let shoppingError = error as? ShoppingListError {

@@ -34,9 +34,9 @@ final class NetworkServiceTests: XCTestCase {
         let item = ShoppingItemDTO(from: ShoppingItem(name: "Original", quantity: 1))
         
         let createdItem = try await networkService.createItem(item)
-        let updatedItem = ShoppingItemDTO(from: ShoppingItem(name: "Updated", quantity: 2))
-        updatedItem.id = createdItem.id
-        
+        // Build an updated DTO with the same id
+        let updatedDomain = ShoppingItem(id: createdItem.id, name: "Updated", quantity: 2)
+        let updatedItem = ShoppingItemDTO(from: updatedDomain)
         let result = try await networkService.updateItem(updatedItem)
         XCTAssertEqual(result.name, "Updated")
         XCTAssertEqual(result.quantity, 2)

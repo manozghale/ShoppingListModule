@@ -14,18 +14,16 @@ final class ViewModelTests: XCTestCase {
     var viewModel: ShoppingListViewModel!
     var mockRepository: MockShoppingListRepository!
     
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         mockRepository = MockShoppingListRepository()
         let networkService = MockNetworkService()
         let syncService = ShoppingSyncService(repository: mockRepository, networkService: networkService)
         viewModel = ShoppingListViewModel(repository: mockRepository, syncService: syncService)
     }
     
-    override func tearDown() {
+    override func tearDown() async throws {
         viewModel = nil
         mockRepository = nil
-        super.tearDown()
     }
     
     func testViewModelInitialization() {
@@ -46,7 +44,7 @@ final class ViewModelTests: XCTestCase {
     }
     
     func testAddItemWithEmptyName() async {
-        await viewModel.addItem(name: "", quantity: 1)
+        await viewModel.addItem(name: "", quantity: 1, note: nil)
         
         XCTAssertEqual(viewModel.items.count, 0)
         XCTAssertTrue(viewModel.showError)
@@ -54,7 +52,7 @@ final class ViewModelTests: XCTestCase {
     }
     
     func testAddItemWithInvalidQuantity() async {
-        await viewModel.addItem(name: "Test", quantity: 0)
+        await viewModel.addItem(name: "Test", quantity: 0, note: nil)
         
         XCTAssertEqual(viewModel.items.count, 0)
         XCTAssertTrue(viewModel.showError)
@@ -170,7 +168,7 @@ final class ViewModelTests: XCTestCase {
         XCTAssertEqual(stats.activeItems, 2)
         XCTAssertEqual(stats.boughtItems, 1)
         XCTAssertEqual(stats.needingSyncItems, 1)
-        XCTAssertTrue(stats.hasUnsyncedChanges)
+        XCTAssertEqual(stats.hasUnsyncedChanges, true)
     }
 }
 

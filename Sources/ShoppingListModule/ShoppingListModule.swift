@@ -63,7 +63,7 @@ public struct ShoppingListModule: Sendable {
 
 /// Simple error view for configuration failures
 private struct ErrorView: View {
-    let error: Error
+    let error: any Error
     
     var body: some View {
         VStack(spacing: 16) {
@@ -87,7 +87,7 @@ private struct ErrorView: View {
 /// This is the primary integration method for most use cases
 public struct SimpleShoppingListView: View {
     @State private var viewModel: ShoppingListViewModel?
-    @State private var error: Error?
+    @State private var error: (any Error)?
     
     public init() {}
     

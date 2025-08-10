@@ -22,9 +22,9 @@ final class UIIntegrationTests: XCTestCase {
     func testShoppingListViewWithItems() {
         let items = MockData.sampleItems()
         let viewModel = ShoppingListViewModel.mock(with: items)
-        let view = ShoppingListView(viewModel: viewModel)
+        _ = ShoppingListView(viewModel: viewModel)
         
-        XCTAssertNotNil(view)
+        // The ViewModel may still be loading; assert items preload is set
         XCTAssertEqual(viewModel.items.count, items.count)
     }
     

@@ -36,12 +36,12 @@ final class SyncServiceTests: XCTestCase {
         let networkService = MockNetworkService()
         let syncService = ShoppingSyncService(repository: repository, networkService: networkService)
         
-        let expectation = XCTestExpectation(description: "Sync status update")
+        let expectation = XCTestExpectation(description: "Received sync status event")
         
         syncService.syncStatusPublisher
             .sink { status in
                 switch status {
-                case .idle:
+                case .syncing, .success, .error:
                     expectation.fulfill()
                 default:
                     break
@@ -49,7 +49,8 @@ final class SyncServiceTests: XCTestCase {
             }
             .store(in: &cancellables)
         
-        await fulfillment(of: [expectation], timeout: 1.0)
+        try? await syncService.synchronize()
+        await fulfillment(of: [expectation], timeout: 2.0)
     }
     
     func testSyncServicePushLocalChanges() async throws {
@@ -97,7 +98,7 @@ final class SyncServiceTests: XCTestCase {
         // Add local item
         let localItem = ShoppingItem(name: "Local", quantity: 1)
         localItem.syncStatus = .needsSync
-        try await repository.save(localItem)
+        try await repository.save(item: localItem)
         
         // Add remote item
         let remoteItem = ShoppingItem(name: "Remote", quantity: 2)

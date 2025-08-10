@@ -10,6 +10,7 @@ import XCTest
 @testable import ShoppingListModule
 
 /// Test helper utilities
+@MainActor
 public struct TestHelpers {
     
     /// Wait for a condition to be true with timeout
@@ -43,23 +44,8 @@ public struct TestHelpers {
     /// Create a test module with mock dependencies
     public static func createTestModule(
         with items: [ShoppingItem] = []
-    ) -> (module: ShoppingListModule, repository: MockShoppingListRepository) {
-        let repository = MockShoppingListRepository(preloadedItems: items)
-        let networkService = MockNetworkService()
-        let syncService = ShoppingSyncService(repository: repository, networkService: networkService)
-        
-        // Register test dependencies
-        let container = ShoppingListDependencies.shared
-        container.register(repository, for: ShoppingListRepository.self)
-        container.register(networkService, for: NetworkService.self)
-        container.register(syncService, for: SyncService.self)
-        
-        do {
-            let module = try ShoppingListModule(configuration: .development)
-            return (module, repository)
-        } catch {
-            fatalError("Failed to create test module: \(error)")
-        }
+    ) async -> (viewModel: ShoppingListViewModel, repository: MockShoppingListRepository) {
+        createTestViewModel(with: items)
     }
     
     /// Assert that two arrays contain the same items (order doesn't matter)

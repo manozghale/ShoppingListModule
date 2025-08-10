@@ -72,9 +72,9 @@ final class ArrayExtensionTests: XCTestCase {
         XCTAssertEqual(sorted[3].name, "Apple")
     }
     
-    func testSortedByCreatedDate() {
+    func testSortedByCreatedDate() async {
         let item1 = ShoppingItem(name: "First", quantity: 1)
-        try? Task.sleep(nanoseconds: 1_000_000) // 1ms delay
+        try? await Task.sleep(nanoseconds: 1_000_000) // 1ms delay
         let item2 = ShoppingItem(name: "Second", quantity: 1)
         
         let items = [item2, item1]

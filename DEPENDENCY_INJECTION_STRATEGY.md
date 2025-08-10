@@ -1,386 +1,140 @@
 # Dependency Injection Strategy
 
-## 🎯 **DI Strategy Overview**
+## 🎯 DI Strategy Overview
 
-This project implements a **Service Locator pattern** for dependency injection, chosen for its simplicity, flexibility, and suitability for the module's requirements. The strategy balances ease of use with testability while avoiding external framework dependencies.
+We use the **Factory Pattern** as the primary dependency injection strategy. The factory is the single integration point that constructs, configures, and wires all dependencies for the module based on a `ShoppingListConfiguration` (production, testing, preview). Internally, we currently leverage a lightweight service locator for instance management, but the public strategy is factory-based and does not require consumers to interact with any container.
 
-## 🏗 **Chosen Approach: Service Locator Pattern**
+Why this update? It makes the DI story explicit and easy to reason about at the module seam, while remaining testable and framework‑independent.
 
-### **Why Service Locator?**
+## 🏗 Chosen Approach: Factory Pattern (with internal instance management)
 
-| Criteria                 | Service Locator | Factory Pattern | Manual Injection | External Framework |
-| ------------------------ | --------------- | --------------- | ---------------- | ------------------ |
-| **Simplicity**           | ✅ High         | ⚠️ Medium       | ❌ Low           | ⚠️ Medium          |
-| **Testability**          | ✅ High         | ✅ High         | ✅ High          | ✅ High            |
-| **Framework Dependency** | ✅ None         | ✅ None         | ✅ None          | ❌ Required        |
-| **Learning Curve**       | ✅ Low          | ⚠️ Medium       | ❌ High          | ⚠️ Medium          |
-| **Module Independence**  | ✅ High         | ✅ High         | ✅ High          | ❌ Low             |
+### Why Factory Pattern?
 
-### **Decision Rationale**
+- **Clear integration seam**: A single place (`ShoppingListModuleFactory`) to create views or view models with correct dependencies.
+- **Testability**: Factories make it trivial to produce configurations with mocks and stubs.
+- **No framework lock‑in**: Pure Swift, zero external DI dependencies.
+- **Discoverability**: Consumers only learn one API to use the module.
+- **Composable**: Keeps wiring close to where lifecycle and configuration are known.
 
-1. **Minimal Dependencies**: No external frameworks required
-2. **Easy Testing**: Simple to mock and replace dependencies
-3. **Clear Interface**: Straightforward registration and resolution
-4. **Thread Safety**: Built-in concurrency safety
-5. **Flexibility**: Easy to extend and modify
+### How this maps to our code
 
-## 🔧 **Implementation Details**
+- `ShoppingListModuleFactory` creates and configures:
+  - `ShoppingListRepository` (SwiftData vs mock)
+  - `NetworkService` (HTTP vs mock)
+  - `SyncService` (composes repository + network)
+  - `ShoppingListViewModel`
+- Today, the factory registers and resolves instances via `ShoppingListDependencies` as an internal implementation detail. Consumers should treat the factory as the DI boundary. If/when we move to pure factory/manual wiring, this remains a non‑breaking change for consumers.
 
-### **Core DI Container**
+## 🔧 Implementation Details
+
+### Factory responsibilities
+
+- Interpret `ShoppingListConfiguration`
+- Construct concrete implementations (prod or mock)
+- Wire dependencies together in the correct order
+- Produce either a `ShoppingListView` or a `ShoppingListViewModel`
+
+### Usage
 
 ```swift
-public final class ShoppingListDependencies: @unchecked Sendable {
-    @MainActor
-    public static let shared = ShoppingListDependencies()
+// Simplest SwiftUI entry point
+let view = try await ShoppingListModuleFactory.createShoppingListView()
 
-    private var dependencies: [String: Any] = [:]
-    private let queue = DispatchQueue(label: "dependencies", qos: .userInitiated, attributes: .concurrent)
-
-    private init() {}
-
-    public func register<T: Sendable>(_ dependency: T, for type: T.Type) {
-        let key = String(describing: type)
-        queue.async(flags: .barrier) {
-            self.dependencies[key] = dependency
-        }
-    }
-
-    public func resolve<T>(_ type: T.Type) -> T? {
-        let key = String(describing: type)
-        return queue.sync {
-            return dependencies[key] as? T
-        }
-    }
-}
+// Or get a view model if you are embedding into a custom UI
+let viewModel = try await ShoppingListModuleFactory.createViewModel()
 ```
 
-### **Key Features**
-
-- **Thread Safety**: Concurrent queue with barrier writes
-- **Type Safety**: Generic registration and resolution
-- **Sendable Compliance**: All dependencies must be Sendable
-- **MainActor Support**: Shared instance is MainActor-isolated
-
-## 📦 **Dependency Registration**
-
-### **Production Configuration**
+### Configuration
 
 ```swift
-@MainActor
-private static func setupDependencies(configuration: ShoppingListConfiguration) async throws {
-    let container = ShoppingListDependencies.shared
-
-    // Repository
-    let repository: ShoppingListRepository
-    if configuration.isTestMode {
-        repository = MockShoppingListRepository()
-    } else {
-        repository = try await SwiftDataShoppingRepository()
-    }
-    container.register(repository, for: ShoppingListRepository.self)
-
-    // Network Service
-    let networkService: NetworkService
-    if let apiURL = configuration.apiBaseURL {
-        networkService = HTTPShoppingNetworkService(baseURL: apiURL)
-    } else {
-        networkService = MockNetworkService()
-    }
-    container.register(networkService, for: NetworkService.self)
-
-    // Sync Service
-    let syncService = ShoppingSyncService(repository: repository, networkService: networkService)
-    container.register(syncService, for: SyncService.self)
-}
+// Example: provide an API base URL, or enable test mode
+let config = ShoppingListConfiguration(apiBaseURL: URL(string: "https://api.example.com"),
+                                       isTestMode: false)
+let view = try await ShoppingListModuleFactory.createShoppingListView(configuration: config)
 ```
 
-### **Testing Configuration**
+### Current internal instance management
+
+- The factory uses `ShoppingListDependencies` (a small service locator) to register and resolve instances it creates. This is internal; consumers do not need to resolve from the container.
+- This indirection keeps the factory simple and centralized today while allowing an easy migration to pure manual wiring later.
+
+## 🧪 Testing with the Factory
+
+- For unit tests, prefer creating a `ShoppingListViewModel` with explicit mocks. The factory supports a testing configuration and can be extended with helpers to return a fully mocked view model.
+- Example pattern:
 
 ```swift
-#if DEBUG
-extension ShoppingListModuleFactory {
-    @MainActor
-    public static func testing(with mockItems: [ShoppingItem] = []) -> (viewModel: ShoppingListViewModel, repository: MockShoppingListRepository) {
-
-        let mockRepository = MockShoppingListRepository(preloadedItems: mockItems)
+let mockRepository = MockShoppingListRepository(preloadedItems: [])
         let mockNetworkService = MockNetworkService()
-        let syncService = ShoppingSyncService(repository: mockRepository, networkService: mockNetworkService)
-
-        // Register test dependencies
-        let container = ShoppingListDependencies.shared
-        container.register(mockRepository, for: ShoppingListRepository.self)
-        container.register(mockNetworkService, for: NetworkService.self)
-        container.register(syncService, for: SyncService.self)
-
-        let viewModel = ShoppingListViewModel(repository: mockRepository, syncService: syncService)
-        return (viewModel, mockRepository)
-    }
-}
-#endif
+let sync = ShoppingSyncService(repository: mockRepository, networkService: mockNetworkService)
+let viewModel = ShoppingListViewModel(repository: mockRepository, syncService: sync)
 ```
 
-## 🧪 **Testing with DI**
+This keeps tests explicit and fast. For integration tests, use `ShoppingListModuleFactory.createViewModel(configuration: .testing)` once available, or construct the configuration you need.
 
-### **Mock Dependencies**
+## 🔄 Lifecycle & Flow
 
-```swift
-// Mock Repository
-public final class MockShoppingListRepository: ShoppingListRepository, @unchecked Sendable {
-    private var items: [ShoppingItem] = []
+1. App calls `ShoppingListModuleFactory.createShoppingListView(...)`
+2. Factory interprets `ShoppingListConfiguration`
+3. Factory constructs Repository → Network → Sync Service
+4. Factory constructs `ShoppingListViewModel`
+5. Factory returns the `ShoppingListView` bound to the view model
 
-    public init(preloadedItems: [ShoppingItem] = []) {
-        self.items = preloadedItems
-    }
+Dependency graph:
 
-    public func fetchItems() async throws -> [ShoppingItem] {
-        return items.filter { !$0.isDeleted }
-    }
-
-    public func save(item: ShoppingItem) async throws {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            items[index] = item
-        } else {
-            items.append(item)
-        }
-    }
-}
-
-// Mock Network Service
-public final class MockNetworkService: NetworkService, @unchecked Sendable {
-    public func fetchItems() async throws -> [ShoppingItemDTO] {
-        return [] // Return mock data
-    }
-
-    public func createItem(_ item: ShoppingItemDTO) async throws -> ShoppingItemDTO {
-        return item // Echo back the item
-    }
-}
-```
-
-### **Test Setup**
-
-```swift
-@MainActor
-final class ViewModelTests: XCTestCase {
-    var viewModel: ShoppingListViewModel!
-    var mockRepository: MockShoppingListRepository!
-
-    override func setUp() {
-        super.setUp()
-        let (vm, repo) = ShoppingListModuleFactory.testing()
-        viewModel = vm
-        mockRepository = repo
-    }
-
-    func testAddItem() async {
-        await viewModel.addItem(name: "Test Item", quantity: 1, note: "Test note")
-
-        XCTAssertEqual(viewModel.items.count, 1)
-        XCTAssertEqual(viewModel.items.first?.name, "Test Item")
-    }
-}
-```
-
-## 🔄 **Dependency Lifecycle**
-
-### **Initialization Flow**
-
-```
-1. App Launch
-   ↓
-2. ShoppingListModuleFactory.createShoppingListView()
-   ↓
-3. setupDependencies(configuration:)
-   ↓
-4. Register Repository (SwiftData or Mock)
-   ↓
-5. Register Network Service (HTTP or Mock)
-   ↓
-6. Register Sync Service
-   ↓
-7. Create ViewModel with injected dependencies
-   ↓
-8. Return ShoppingListView
-```
-
-### **Dependency Graph**
-
-```
+```text
 ShoppingListView
     ↓
 ShoppingListViewModel
     ↓
 ├── ShoppingListRepository (SwiftDataShoppingRepository | MockShoppingListRepository)
-├── SyncService (ShoppingSyncService)
-    ↓
+└── SyncService (ShoppingSyncService)
     ├── ShoppingListRepository
     └── NetworkService (HTTPShoppingNetworkService | MockNetworkService)
 ```
 
-## 🎯 **Benefits of This Approach**
+## 🤝 Alternatives and Tradeoffs
 
-### **1. Testability**
+We explicitly considered the three options requested and selected the Factory Pattern.
 
-- **Easy Mocking**: Simple to create mock implementations
-- **Isolated Testing**: Each component can be tested independently
-- **No Framework Dependencies**: No external DI framework required for tests
+- Resolver (external DI container)
 
-### **2. Flexibility**
+  - ✅ Powerful, flexible graphs; mature ecosystem
+  - ❌ Adds a runtime dependency (lock‑in, learning curve)
+  - ❌ Overkill for a small, self‑contained module
 
-- **Runtime Configuration**: Dependencies can be changed at runtime
-- **Environment Support**: Easy to switch between production and testing
-- **Extensibility**: Simple to add new dependencies
+- Factory Pattern (chosen)
 
-### **3. Simplicity**
+  - ✅ Clear seam, excellent testability, no external deps
+  - ✅ Keeps composition near configuration and lifecycle
+  - ⚠️ A bit more wiring code vs a container, but localized
 
-- **No External Dependencies**: Self-contained implementation
-- **Clear API**: Simple register/resolve pattern
-- **Easy to Understand**: Straightforward implementation
+- Manual Injection (module‑wide)
+  - ✅ Maximum explicitness and compile‑time safety
+  - ❌ Boilerplate if applied everywhere; scales poorly across call sites
+  - ✅ We still use manual injection inside the factory to wire components
 
-### **4. Performance**
+## 🗣 Explain it to a teammate
 
-- **Minimal Overhead**: No reflection or complex resolution
-- **Type Safety**: Compile-time type checking
-- **Memory Efficient**: Simple dictionary-based storage
+We use a factory to build the module. You call the factory with a configuration; it creates the repository, network, and sync service, then builds the view model and returns the view. The factory owns the wiring so consumers never need to resolve dependencies. Internally, we currently park the instances in a tiny container that the factory controls; we can later remove that indirection without changing the public API.
 
-## 🔍 **Alternative Approaches Considered**
+## 🔒 Concurrency & Safety
 
-### **1. Factory Pattern**
+- The internal container is thread‑safe (barrier writes, concurrent reads) and `@MainActor` isolated where appropriate.
+- Public factory methods are `@MainActor` as they produce UI‑bound types.
 
-```swift
-// Rejected: More complex for simple use case
-protocol ShoppingListFactory {
-    func createRepository() -> ShoppingListRepository
-    func createNetworkService() -> NetworkService
-    func createSyncService() -> SyncService
-}
-```
+## 🚀 Migration Notes
 
-**Why Rejected**:
+- Today: Factory uses an internal service locator to register/resolve the instances it just created.
+- Tomorrow: We can remove the container and keep pure factory wiring with no public API changes.
+- If we ever outgrow this setup, we can adopt Resolver/Swinject behind the factory boundary without impacting consumers.
 
-- Overkill for the number of dependencies
-- More boilerplate code
-- Harder to manage shared instances
+## 📌 Quick Reference
 
-### **2. Manual Injection**
-
-```swift
-// Rejected: Too verbose and error-prone
-let repository = SwiftDataShoppingRepository()
-let networkService = HTTPShoppingNetworkService(baseURL: apiURL)
-let syncService = ShoppingSyncService(repository: repository, networkService: networkService)
-let viewModel = ShoppingListViewModel(repository: repository, syncService: syncService)
-```
-
-**Why Rejected**:
-
-- Verbose and repetitive
-- Hard to manage in complex scenarios
-- Difficult to test
-
-### **3. External Framework (Resolver/Swinject)**
-
-```swift
-// Rejected: Adds external dependency
-@Register
-class ShoppingListRepository: ShoppingListRepositoryProtocol {
-    // Implementation
-}
-```
-
-**Why Rejected**:
-
-- External dependency adds complexity
-- Framework lock-in
-- Learning curve for team members
-
-## 🔧 **Advanced Usage**
-
-### **Scoped Dependencies**
-
-```swift
-// For future use: Session-scoped dependencies
-public final class SessionDependencies {
-    private var sessionDependencies: [String: Any] = [:]
-
-    public func registerSessionDependency<T>(_ dependency: T, for type: T.Type) {
-        sessionDependencies[String(describing: type)] = dependency
-    }
-
-    public func resolveSessionDependency<T>(_ type: T.Type) -> T? {
-        return sessionDependencies[String(describing: type)] as? T
-    }
-}
-```
-
-### **Lazy Initialization**
-
-```swift
-// For expensive dependencies
-public func resolveLazy<T>(_ type: T.Type, factory: () -> T) -> T {
-    if let existing = resolve(type) {
-        return existing
-    }
-    let newInstance = factory()
-    register(newInstance, for: type)
-    return newInstance
-}
-```
-
-## 📊 **Performance Characteristics**
-
-### **Memory Usage**
-
-- **Base Container**: ~1KB
-- **Per Dependency**: ~100 bytes
-- **Total Overhead**: <5KB for typical usage
-
-### **Performance Metrics**
-
-- **Registration**: <1ms
-- **Resolution**: <0.1ms
-- **Thread Safety**: No blocking operations
-
-## 🔒 **Thread Safety**
-
-### **Concurrent Access**
-
-```swift
-// Thread-safe registration
-queue.async(flags: .barrier) {
-    self.dependencies[key] = dependency
-}
-
-// Thread-safe resolution
-return queue.sync {
-    return dependencies[key] as? T
-}
-```
-
-### **MainActor Integration**
-
-```swift
-@MainActor
-public static let shared = ShoppingListDependencies()
-```
-
-## 🚀 **Future Enhancements**
-
-### **Planned Improvements**
-
-1. **Dependency Validation**: Runtime validation of dependency graph
-2. **Circular Dependency Detection**: Prevent circular dependencies
-3. **Lifecycle Management**: Automatic cleanup of dependencies
-4. **Configuration Validation**: Validate configuration at startup
-
-### **Migration Path**
-
-The current implementation is designed to be easily extensible:
-
-- Add new registration methods without breaking existing code
-- Support for different scopes (singleton, transient, session)
-- Integration with external DI frameworks if needed
+- Preferred integration: `ShoppingListModuleFactory.createShoppingListView(...)`
+- Preferred test strategy: construct a `ShoppingListViewModel` with mocks, or use a testing configuration through the factory.
+- No external DI frameworks required.
 
 ---
 
-**This DI strategy provides a clean, testable, and maintainable approach to dependency management while keeping the module self-contained and framework-independent.**
+This strategy keeps integration dead simple, testing straightforward, and avoids framework lock‑in while leaving room to evolve.

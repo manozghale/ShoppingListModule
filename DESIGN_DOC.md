@@ -1,200 +1,79 @@
-//
-//  DESIGN_DOC.md
-//  ShoppingListModule
-//
-//  Created by Manoj on 06/08/2025.
-//
+# ShoppingListModule – Design Summary (<= 600 words)
 
-# Shopping List Module - Design Document
+## Goals
 
-## Architecture Overview
+- Modular shopping list feature that plugs into host apps via Swift Package.
+- Offline-first UX with local persistence and background synchronization.
+- Clean Architecture with MVVM and Repository; minimal dependencies.
 
-This shopping list module implements a **Clean Architecture** pattern adapted for iOS development, combining **MVVM** for presentation layer organization with **Repository pattern** for data access abstraction. The design prioritizes offline-first functionality, testability, and modularity.
+## Architecture
 
-## Key Architectural Decisions
+- **Layers**
+  - **Presentation**: `ShoppingListView` (SwiftUI), components (search/filter bar, item row, sheets), `ShoppingListViewModel` (state, validation, orchestration).
+  - **Domain/Business**: `SyncService` (push/pull with retry), `ShoppingItem` domain model with business logic, error mapping.
+  - **Data**: `ShoppingListRepository` protocol with `SwiftDataShoppingRepository` and `MockShoppingListRepository`; `NetworkService` protocol with `HTTPShoppingNetworkService` and `MockNetworkService`.
+- **DI & Composition**
+  - `ShoppingListModuleFactory` builds the dependency graph based on `ShoppingListConfiguration`.
+  - `ShoppingListDependencies` implements Service Locator pattern for runtime registration/resolution.
+  - Clean separation between production and testing configurations.
 
-### 1. Offline-First with SwiftData
+## Offline-first
 
-**Decision**: Use SwiftData as the primary persistence layer with local-first data flow.
+- **Persistence**: `SwiftDataShoppingRepository` stores `ShoppingItem` model with timestamps and sync flags using SwiftData's `@Model` annotation.
+- **Conflict resolution**: last-write-wins using `modifiedAt` during `mergeRemoteItems` in repository.
+- **Sync**: `ShoppingSyncService` publishes `SyncState` via Combine; operations are async/await with exponential backoff and jitter.
+- **Background**: `BackgroundSyncManager` registers/schedules BGTask (identifier `com.shoppinglist.sync`) and triggers `synchronize()`; re-schedules on completion.
 
-**Rationale**: 
-- SwiftData provides type-safe, Swift-native persistence with minimal boilerplate
-- Local-first ensures the app works seamlessly without network connectivity
-- SwiftData's model-driven approach integrates well with SwiftUI's reactive patterns
+## Models
 
-**Implementation**: The `ShoppingItem` model serves as both domain entity and SwiftData model, including sync metadata (`syncStatus`, `modifiedAt`, `lastSyncedAt`) for conflict resolution.
+- `ShoppingItem` includes `id`, `name`, `quantity`, `note`, `isBought`, `createdAt`, `modifiedAt`, `syncStatus`, `lastSyncedAt`, `isDeleted`.
+- `SyncStatus` enum with `.needsSync`, `.syncing`, `.synced`, `.failed` states and computed properties.
+- Filtering (`ShoppingItemFilter`), sorting (`SortOption`), and search are applied in the ViewModel with reactive updates.
 
-### 2. Repository Pattern for Data Abstraction
+## Public API
 
-**Decision**: Abstract all data operations behind a `ShoppingListRepository` protocol.
+- `ShoppingListModule` provides:
+  - `SimpleShoppingListView` (zero-config SwiftUI view with automatic ViewModel creation)
+  - Builders: `createView(...)`, `createViewModel(...)`, `createViewController(...)` for custom or UIKit integration.
+- `ShoppingListConfiguration` toggles API base URL, background sync, retry limits, and `isTestMode` (mock vs SwiftData).
 
-**Rationale**:
-- Enables easy testing with mock implementations
-- Separates business logic from persistence details
-- Allows future migration to different storage solutions
-- Provides clean interface for sync operations
+## Testing
 
-**Implementation**: `SwiftDataShoppingRepository` handles production persistence while `MockShoppingListRepository` enables comprehensive testing without database dependencies.
+- **Unit tests** for repository, networking, sync, models, and ViewModel.
+- **Integration tests** validate end-to-end behavior with mocks.
+- **UI integration tests** assert view wiring and state transitions.
+- **Test utilities** provide mock data and helper functions for consistent testing.
 
-### 3. MVVM with Reactive Bindings
+## Error Handling
 
-**Decision**: Use MVVM pattern with `@Published` properties for SwiftUI integration.
+- Domain-specific `ShoppingListError` and `NetworkError` map to user-facing messages via ViewModel (`errorMessage`, `showError`).
+- Sync errors emitted on `syncStatusPublisher` and surfaced via toolbar status.
+- Comprehensive error mapping from network layer to presentation layer.
 
-**Rationale**:
-- Natural fit for SwiftUI's declarative, reactive nature
-- Clear separation between UI logic and business logic
-- `ObservableObject` provides automatic UI updates
-- Enables comprehensive ViewModel testing
+## Performance & Simplicity
 
-**Implementation**: `ShoppingListViewModel` manages all business logic, data transformations, and error handling while exposing clean, reactive properties for UI binding.
-
-### 4. Dependency Injection via Service Locator
-
-**Decision**: Implement lightweight dependency injection without external frameworks.
-
-**Rationale**:
-- Keeps module dependencies minimal
-- Provides sufficient flexibility for testing and configuration
-- Simple to understand and maintain
-- Avoids framework lock-in
-
-**Implementation**: `ShoppingListDependencies` provides thread-safe service location with factory methods for different configurations (production, development, testing).
-
-### 5. Last-Write-Wins Conflict Resolution
-
-**Decision**: Use timestamp-based conflict resolution for sync operations.
-
-**Rationale**:
-- Simple to implement and understand
-- Sufficient for shopping list use case where conflicts are rare
-- Avoids complex merge logic
-- Preserves user intent (most recent change wins)
-
-**Implementation**: Each item tracks `createdAt` and `modifiedAt` timestamps. The sync service compares timestamps during merge operations to determine which version to keep.
-
-### 6. Background Sync with Retry Logic
-
-**Decision**: Implement exponential backoff retry strategy for network operations.
-
-**Rationale**:
-- Mobile networks are inherently unreliable
-- Exponential backoff prevents server overload
-- Graceful degradation maintains user experience
-- Jitter prevents thundering herd problems
-
-**Implementation**: `ShoppingSyncService` provides configurable retry logic with exponential backoff and jitter for network resilience.
-
-## Data Flow Architecture
-
-```
-User Action → ViewModel → Repository → SwiftData
-     ↓            ↓           ↓           ↓
-UI Update ← Published ← Domain Model ← Persistence
-                Properties
-
-Background: Sync Service ↔ Network Service ↔ Remote API
-                   ↓              ↓
-           Repository ← Conflict Resolution
-```
-
-## Module Boundaries and Interfaces
-
-### Public Interface
-- `ShoppingListView` - Primary SwiftUI integration point
-- `ShoppingListViewModel` - For custom UI implementations  
-- `ShoppingListModule` - Complete module interface
-- `ShoppingListModuleFactory` - Configuration and creation
-
-### Internal Components
-- Domain models (`ShoppingItem`, enums, extensions)
-- Data access (`ShoppingListRepository`, implementations)
-- Networking (`NetworkService`, `SyncService`)
-- Dependency management (`ShoppingListDependencies`)
-
-## Testing Strategy
-
-### Unit Tests
-- Model behavior and validation
-- ViewModel business logic
-- Repository implementations
-- Sync service operations
-- Array extensions and utilities
-
-### Integration Tests
-- Complete workflows (add → sync → modify → sync)
-- Error handling across layers
-- Concurrent operations
-- Module factory and dependency injection
-
-### UI Tests
-- SwiftUI view integration
-- Filter and search functionality
-- Error state presentation
-
-## Error Handling Strategy
-
-**Layered Approach**:
-1. **Domain Level**: Custom errors (`ShoppingListError`) for business rule violations
-2. **Network Level**: Structured errors (`NetworkError`) with user-friendly messages
-3. **Presentation Level**: ViewModel translates errors to UI-appropriate messages
-4. **User Experience**: Non-blocking error presentation with auto-dismissal
-
-## Performance Considerations
-
-### Memory Management
-- Weak references in Combine subscriptions
-- Proper disposal of cancellables
-- Efficient SwiftData query predicates
-
-### Concurrent Operations
-- `@MainActor` for UI-bound operations
-- Background queues for sync operations
-- Thread-safe repository implementations
-
-### Large Dataset Handling
-- Efficient filtering and sorting using native Swift operations
-- Lazy evaluation where appropriate
-- Pagination-ready architecture for future scaling
+- Avoids heavy frameworks; minimal allocations in hot paths.
+- Batches local sync updates (mark as synced/failed) and defers UI updates to main actor.
+- Uses `FetchDescriptor` with predicates and sort descriptors for SwiftData queries.
+- Service Locator pattern provides lightweight dependency injection without external frameworks.
 
 ## Rejected Alternatives
 
-### Alternative 1: Core Data Instead of SwiftData
+1. **Heavy DI frameworks** (e.g., Resolver/Swinject)
 
-**Reasoning for Rejection**:
-- SwiftData provides cleaner, more Swift-native API
-- Eliminates NSManagedObjectContext complexity
-- Better integration with SwiftUI
-- Reduces boilerplate code significantly
+   - Rejected to keep the module lightweight, dependency-free, and easy to embed. The simple service-locator pattern suffices and is test-friendly.
 
-**Trade-offs**: SwiftData requires iOS 17+, limiting deployment targets. However, the improved developer experience and reduced complexity outweigh this limitation for modern apps.
+2. **Complex conflict resolution** (CRDTs or per-field merge)
+   - Overkill for a shopping list. Last-write-wins (timestamp-based) is predictable, easy to reason about, and meets the challenge requirements.
 
-### Alternative 2: Coordinator Pattern for Navigation
+## Host App Integration Notes
 
-**Reasoning for Rejection**:
-- Shopping list has simple navigation requirements
-- SwiftUI's native navigation is sufficient
-- Coordinator pattern would add unnecessary complexity
-- Sheet-based modals handle the limited navigation needs
+- **Background tasks**: add `BGTaskSchedulerPermittedIdentifiers` to host Info.plist with `com.shoppinglist.sync` and enable the Background Modes capability (Background fetch/processing). Call `ShoppingListModuleFactory.setupModule(..., configuration:)` with `enableBackgroundSync = true`.
+- **Persistence**: use `isTestMode = false` (e.g., `.production` or custom with `apiBaseURL = nil`) to enable SwiftData storage for true offline persistence. `.development` uses mock repo (in-memory) for rapid iteration.
 
-**Trade-offs**: For apps with complex navigation flows, Coordinator pattern provides better navigation management. However, the shopping list feature's simple navigation doesn't justify the additional architectural overhead.
+## Future Work
 
-## Future Considerations
-
-### Scalability
-- The repository pattern enables easy migration to more sophisticated storage
-- Sync service can be extended with operational transforms for complex conflict resolution
-- Module interface supports integration into larger app architectures
-
-### Extensibility
-- Clear separation of concerns enables feature additions
-- Dependency injection supports adding new services (analytics, crash reporting)
-- Protocol-based design allows alternative implementations
-
-### Platform Support
-- Architecture supports macOS, iPadOS expansion
-- Repository abstraction enables watchOS-optimized implementations
-- Network service can be adapted for different backend systems
-
-## Conclusion
-
-This architecture balances pragmatism with best practices, providing a robust, testable, and maintainable shopping list module. The offline-first approach ensures excellent user experience, while the clean architecture enables easy testing and future evolution. The design successfully meets all requirements while maintaining simplicity and clarity.
+- Provide migration strategies for SwiftData schema changes.
+- Pluggable conflict policies (configurable resolver).
+- More granular sync progress reporting (items processed counts).
+- Enhanced background task scheduling and battery optimization.

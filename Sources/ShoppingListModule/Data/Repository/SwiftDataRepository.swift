@@ -29,7 +29,11 @@ public class SwiftDataShoppingRepository: ShoppingListRepository {
             allowsSave: true
         )
         
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        // Create container with explicit schema versioning
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
         self.init(modelContainer: container)
     }
     
@@ -65,13 +69,16 @@ public class SwiftDataShoppingRepository: ShoppingListRepository {
     }
     
     public func itemsNeedingSync() async throws -> [ShoppingItem] {
+        // Fetch all non-deleted items and filter by sync status in memory
+        // This avoids SwiftData predicate limitations with enum comparisons
         let descriptor = FetchDescriptor<ShoppingItem>(
             predicate: #Predicate<ShoppingItem> { item in
-                item.syncStatus.rawValue == "needs_sync" || item.syncStatus.rawValue == "failed"
+                !item.isDeleted
             }
         )
         
-        return try modelContext.fetch(descriptor)
+        let allItems = try modelContext.fetch(descriptor)
+        return allItems.filter { $0.syncStatus == .needsSync || $0.syncStatus == .failed }
     }
     
     public func markItemsAsSynced(_ items: [ShoppingItem]) async throws {

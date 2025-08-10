@@ -38,18 +38,30 @@ public class ShoppingListModuleFactory {
         configuration: ShoppingListConfiguration = .production
     ) async throws -> ShoppingListViewModel {
         
+        print("Creating ViewModel with configuration: \(configuration)")
+        
         // Setup dependencies based on configuration
         try await setupDependencies(configuration: configuration)
         
+        print("Dependencies setup completed, resolving repository...")
+        
         guard let repository = ShoppingListDependencies.shared.resolve(ShoppingListRepository.self) else {
+            print("Failed to resolve ShoppingListRepository")
             throw ModuleError.missingDependency("ShoppingListRepository")
         }
         
+        print("Repository resolved: \(type(of: repository))")
+        
         guard let syncService = ShoppingListDependencies.shared.resolve(SyncService.self) else {
+            print("Failed to resolve SyncService")
             throw ModuleError.missingDependency("SyncService")
         }
         
-        return ShoppingListViewModel(repository: repository, syncService: syncService)
+        print("SyncService resolved: \(type(of: syncService))")
+        
+        let viewModel = ShoppingListViewModel(repository: repository, syncService: syncService)
+        print("ViewModel created successfully")
+        return viewModel
     }
     
     /// Setup all required dependencies based on configuration
@@ -62,9 +74,20 @@ public class ShoppingListModuleFactory {
         if configuration.isTestMode {
             repository = MockShoppingListRepository()
         } else {
-            repository = try await SwiftDataShoppingRepository()
+            do {
+                repository = try SwiftDataShoppingRepository()
+            } catch {
+                print("Failed to create SwiftDataShoppingRepository: \(error)")
+                throw ModuleError.initializationFailed(error)
+            }
         }
         container.register(repository, for: ShoppingListRepository.self)
+        
+        // Verify repository was registered
+        guard let registeredRepository = container.resolve(ShoppingListRepository.self) else {
+            throw ModuleError.configurationError("Repository registration failed")
+        }
+        print("Repository registered successfully: \(type(of: registeredRepository))")
         
         // Setup Network Service
         let networkService: NetworkService
@@ -81,6 +104,12 @@ public class ShoppingListModuleFactory {
             networkService: networkService
         )
         container.register(syncService, for: SyncService.self)
+        
+        // Verify all dependencies are registered
+        guard let _ = container.resolve(SyncService.self) else {
+            throw ModuleError.configurationError("SyncService registration failed")
+        }
+        print("All dependencies registered successfully")
     }
     
     /// Create a minimal module for SwiftUI previews

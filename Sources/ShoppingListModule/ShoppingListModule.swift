@@ -103,7 +103,7 @@ public struct SimpleShoppingListView: View {
         }
         .task {
             do {
-                viewModel = try await ShoppingListModule.createViewModel()
+                viewModel = try await ShoppingListModule.createViewModel(configuration: .development)
             } catch {
                 self.error = error
             }

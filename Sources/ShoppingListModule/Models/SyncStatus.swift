@@ -9,7 +9,9 @@ import Foundation
 
 /// Represents the synchronization status of a shopping item
 /// Used for offline-first architecture with conflict resolution
-public enum SyncStatus: String, Codable, CaseIterable, Sendable {
+/// Note: This enum is designed to work with SwiftData and must maintain
+/// the exact raw values for database compatibility
+public enum SyncStatus: String, Codable, CaseIterable, Sendable, Hashable {
     case synced = "synced"
     case needsSync = "needs_sync"
     case syncing = "syncing"
@@ -35,6 +37,16 @@ public enum SyncStatus: String, Codable, CaseIterable, Sendable {
         case .synced, .failed:
             return false
         }
+    }
+    
+    /// Whether the item is currently being processed
+    public var isProcessing: Bool {
+        self == .syncing
+    }
+    
+    /// Whether the item needs attention (failed or needs sync)
+    public var needsAttention: Bool {
+        self == .needsSync || self == .failed
     }
 }
 

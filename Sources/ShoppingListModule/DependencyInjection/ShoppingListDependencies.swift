@@ -25,6 +25,7 @@ public final class ShoppingListDependencies: @unchecked Sendable {
     private init() {}
     
     /// Register a dependency with a specific key
+    @MainActor
     public func register<T: Sendable>(_ dependency: T, for type: T.Type) {
         let key = String(describing: type)
         queue.async(flags: .barrier) {
@@ -33,11 +34,14 @@ public final class ShoppingListDependencies: @unchecked Sendable {
     }
     
     /// Resolve a dependency by type
+    @MainActor
     public func resolve<T>(_ type: T.Type) -> T? {
         let key = String(describing: type)
-        return queue.sync {
+        let result = queue.sync {
             return dependencies[key] as? T
         }
+        print("Resolving \(key): \(result != nil ? "Found" : "Not found")")
+        return result
     }
     
     /// Clear all registered dependencies

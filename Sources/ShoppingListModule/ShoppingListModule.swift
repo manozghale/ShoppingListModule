@@ -103,7 +103,8 @@ public struct SimpleShoppingListView: View {
         }
         .task {
             do {
-                viewModel = try await ShoppingListModule.createViewModel(configuration: .development)
+                let config = ShoppingListConfiguration(apiBaseURL: nil, enableBackgroundSync: true, maxRetries: 3, isTestMode: false)
+                viewModel = try await ShoppingListModule.createViewModel(configuration: config)
             } catch {
                 self.error = error
             }
